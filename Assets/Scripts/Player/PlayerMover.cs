@@ -1,11 +1,15 @@
-﻿using Infrastructure.Services;
+﻿using System;
+using Infrastructure;
+using Infrastructure.Services;
+using Infrastructure.Services.Input;
 using InputClasses;
 using Interfaces;
 using MyScreen;
 using UnityEngine;
+
 namespace Player
 {
-    public class Mover : MonoBehaviour, IMovable
+    public class PlayerMover : MonoBehaviour, IMovable
     {
         private static readonly int AnimatorMove = Animator.StringToHash("Move");
 
@@ -16,6 +20,7 @@ namespace Player
         private IGetSizeable _gameObjectSize;
 
         private IInput _iInput;
+        private IInputService _iInputService;
         private float _lastYPosition;
 
         private float _leftBorder;
@@ -24,9 +29,23 @@ namespace Player
         private IGetSizeable _screenBounds;
         private float _topBorder;
 
+        private float movementSpeed = 4;
+
         private void Update()
         {
-            _iInput.UserInput();
+            Vector3 movementVector = Vector3.zero;
+
+            if (_iInputService.Axis.sqrMagnitude > Constants.Epsilon)
+            {
+                movementVector = _iInputService.Axis;
+            }
+
+            Vector3 newPosition = transform.position + movementVector * (movementSpeed * Time.deltaTime);
+
+            newPosition.x = Mathf.Clamp(newPosition.x, _leftBorder, _rightBorder);
+            newPosition.y = Mathf.Clamp(newPosition.y, _bottomBorder, _topBorder);
+
+            transform.position = newPosition;
         }
 
         public void OnMouseDown()
@@ -43,6 +62,7 @@ namespace Player
         {
             _camera = Camera.main;
 
+            _iInputService = Game.InputService;
             _iInput = AllServices.Container.Single<IInput>();
 
             _gameObjectSize = GetComponent<IGetSizeable>();
@@ -59,12 +79,12 @@ namespace Player
 
         public void Move()
         {
-            Vector3 positionWithinScreen = LimitByScreen();
+            Vector2 positionWithinScreen = LimitByScreen();
             transform.position = positionWithinScreen;
-            ForwardChecker();
+            // ForwardChecker();
         }
 
-        private Vector2 LimitByScreen()
+        private Vector3 LimitByScreen()
         {
             float limitByX = Mathf.Clamp(MousePositionInWorld().x - _offsetDistance.x, _leftBorder, _rightBorder);
             float limitByY = Mathf.Clamp(MousePositionInWorld().y - _offsetDistance.y, _bottomBorder, _topBorder);
@@ -72,17 +92,17 @@ namespace Player
             return new Vector3(limitByX, limitByY);
         }
 
-        private void ForwardChecker()
-        {
-            float currentPosition = transform.position.y;
-
-            if (currentPosition > _lastYPosition)
-            {
-                _animator.Animator.SetTrigger(AnimatorMove);
-            }
-
-            _lastYPosition = currentPosition;
-        }
+        // private void ForwardChecker()
+        // {
+        //     float currentPosition = transform.position.y;
+        //
+        //     if (currentPosition > _lastYPosition)
+        //     {
+        //         _animator.Animator.SetTrigger(AnimatorMove);
+        //     }
+        //
+        //     _lastYPosition = currentPosition;
+        // }
 
         private Vector3 MousePositionInWorld()
         {
